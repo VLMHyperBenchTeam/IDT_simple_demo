@@ -11,4 +11,4 @@ RUN poetry config installer.max-workers 4 && \
     poetry install --no-root --no-interaction --no-ansi
 
 # Запускаем терминал
-CMD ["streamlit run main.py --server.port=8501 --server.address=0.0.0.0"]
+CMD ["sh"]
