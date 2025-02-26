@@ -33,9 +33,6 @@ logs/
 # ignore data Hugging Face model_cache
 model_cache
 
-# Игнорируем все коллекции промптов
-PromptCollection/*
-
 # Игнорируем страницы pdf-документа
 images
 

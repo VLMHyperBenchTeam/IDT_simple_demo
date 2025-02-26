@@ -1,0 +1,3 @@
+﻿prompt;doc_class_question_type;cer
+Find the page number of the document. Write the answer as a number.;doc Номер страницы;0
+Find the footer on the left side of the page. The data contains 2 lines. In your answer, provide only the second line with the number at the end. Examples of correct answers: Cambridge_WealthPortWrapClientAgreementandApplication_010325, Cambridge_WealthPortWrapExhibit_102324, Cambridge_PrivacyPolicy_12/22.;doc Название блока;0
