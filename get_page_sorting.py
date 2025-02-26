@@ -2,6 +2,7 @@ import streamlit as st
 import os
 import re
 from model_interface.model_factory import ModelFactory
+
 @st.cache_resource
 def load_model():
     cache_directory = "model_cache"
@@ -32,7 +33,7 @@ PROMPT = """Перед вами {number_page} изображений стран�
             Пожалуйста, проанализируйте текст на каждой странице и укажите правильный порядок только в виде порядка страниц через запятую.
 """
 def get_page_sorting(image_path):
-    model_answer = model.predict_on_images(images=image_path, question=PROMPT.format(number_page=len(image_path)))
+    # model_answer = model.predict_on_images(images=image_path, question=PROMPT.format(number_page=len(image_path)))
     model_answer = re.findall(r'\d+', model_answer)
     model_answer  = list(map(int, model_answer))
     return model_answer
