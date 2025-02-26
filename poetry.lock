@@ -1035,6 +1035,21 @@ tests = ["covdefaults", "hypothesis", "pytest", "pytest-cov", "pytest-env", "pyt
 typing = ["mypy (>=1.15.0,<1.16.0)", "pandas-stubs", "pyright", "typing-extensions"]
 
 [[package]]
+name = "natsort"
+version = "8.4.0"
+description = "Simple yet flexible natural sorting in Python."
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "natsort-8.4.0-py3-none-any.whl", hash = "sha256:4732914fb471f56b5cce04d7bae6f164a592c7712e1c85f9ef585e197299521c"},
+    {file = "natsort-8.4.0.tar.gz", hash = "sha256:45312c4a0e5507593da193dedd04abb1469253b601ecaf63445ad80f0a1ea581"},
+]
+
+[package.extras]
+fast = ["fastnumbers (>=2.0.0)"]
+icu = ["PyICU (>=1.0.0)"]
+
+[[package]]
 name = "numpy"
 version = "2.2.3"
 description = "Fundamental package for array computing in Python"
@@ -1314,6 +1329,21 @@ files = [
 
 [package.extras]
 twisted = ["twisted"]
+
+[[package]]
+name = "prompt-adapter"
+version = "0.1.0"
+description = ""
+optional = false
+python-versions = "^3.10"
+files = []
+develop = false
+
+[package.source]
+type = "git"
+url = "https://github.com/VLMHyperBenchTeam/prompt_adapter.git"
+reference = "0.1.0"
+resolved_reference = "5df28a3588828c1b159908744cec97e74491b070"
 
 [[package]]
 name = "protobuf"
@@ -2136,4 +2166,4 @@ watchmedo = ["PyYAML (>=3.10)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "628ead46572b1efa10d49730b399930bf33cf98b9a687bdc3db2a7f3df3cc2be"
+content-hash = "667f97e68db3f37c4cba0c06d6975c224269d0ebffe92851cc8a4a0ffee0c5fa"

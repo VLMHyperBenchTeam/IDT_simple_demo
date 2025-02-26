@@ -34,4 +34,11 @@ logs/
 model_cache
 
 # Игнорируем все коллекции промптов
-vlmhyperbench/PromptCollection/*
+PromptCollection/*
+
+# Игнорируем страницы pdf-документа
+images
+
+# Игнорируем временные pdf-файлы
+sorted_output.pdf
+uploaded.pdf
