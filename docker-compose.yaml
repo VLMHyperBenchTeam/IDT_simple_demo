@@ -1,0 +1,6 @@
+services:
+  demo:
+    build: .
+    restart: always
+    ports:
+      - 8501:8501
