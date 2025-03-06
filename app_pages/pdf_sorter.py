@@ -2,11 +2,17 @@ import hashlib
 import os
 from pathlib import Path
 import streamlit as st
-from get_page_sorting import (create_topic_mapping, get_page_sorting, get_pages_mapping)
+from get_page_sorting import (
+    create_topic_mapping,
+    get_page_sorting,
+    get_pages_mapping,
+    create_topic_range_mapping,
+)
 from parse_pdf import convert_pdf_to_images
 from pdf_mapper import pdf_to_mappings
 
 tmp_dir = "tmp"
+
 
 def pdf_sorter_page():
     st.title("PDF-сортировка")
@@ -63,8 +69,7 @@ def pdf_sorter_page():
                 try:
                     # Конвертация PDF в изображения
                     convert_pdf_to_images(
-                        pdf_path=Path(temp_pdf_path),
-                        images_folder=image_folder
+                        pdf_path=Path(temp_pdf_path), images_folder=image_folder
                     )
 
                     # Обработка страниц
@@ -76,11 +81,12 @@ def pdf_sorter_page():
                     pdf_to_mappings(
                         pdf_in_path=temp_pdf_path,
                         mapping_list=pages_mapping,
-                        output_file_path=full_output_path
+                        output_file_path=full_output_path,
                     )
 
                     # Создание PDF по темам
                     dfs_by_topic = create_topic_mapping(df_pages)
+                    dfs_by_topic = create_topic_range_mapping(dfs_by_topic)
                     topic_files = {}
                     for topic in dfs_by_topic:
                         topic_pages = get_pages_mapping(dfs_by_topic[topic])
@@ -88,7 +94,7 @@ def pdf_sorter_page():
                         pdf_to_mappings(
                             pdf_in_path=temp_pdf_path,
                             mapping_list=topic_pages,
-                            output_file_path=topic_output
+                            output_file_path=topic_output,
                         )
                         topic_files[topic] = topic_output
 
@@ -115,13 +121,15 @@ def pdf_sorter_page():
     # Вывод кнопок только если обработка завершена
     if not st.session_state.processing:
         # Кнопка для полного PDF
-        if st.session_state.full_output_path and os.path.exists(st.session_state.full_output_path):
+        if st.session_state.full_output_path and os.path.exists(
+            st.session_state.full_output_path
+        ):
             with open(st.session_state.full_output_path, "rb") as f:
                 st.download_button(
                     label="Скачать полный PDF",
                     data=f.read(),
                     file_name="sorted_full.pdf",
-                    mime="application/pdf"
+                    mime="application/pdf",
                 )
 
         # Кнопки по темам
@@ -134,7 +142,7 @@ def pdf_sorter_page():
                             label=f"Скачать {topic}",
                             data=f.read(),
                             file_name=f"{topic}.pdf",
-                            mime="application/pdf"
+                            mime="application/pdf",
                         )
     else:
         st.info("Идет обработка... Пожалуйста, подождите.")

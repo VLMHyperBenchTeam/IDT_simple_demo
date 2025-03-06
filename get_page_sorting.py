@@ -59,11 +59,31 @@ def create_topic_mapping(df: pd.DataFrame) -> dict[str, pd.DataFrame]:
         >>> topic_mapping["Topic1"].shape  # Размер DataFrame для "Topic1"
         (2, 3)
     """
-    # unique_topics = df["page_topic"].unique()
-    # dataframes_by_topic = {topic: df[df["page_topic"] == topic] for topic in unique_topics}
-
     dataframes_by_topic = {topic: group for topic, group in df.groupby("page_topic")}
     return dataframes_by_topic
+
+
+def create_topic_range_mapping(dataframes_by_topic: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    """
+    Создает словарь с ключами в формате "topic_pages_start-end" и соответствующими DataFrame групп.
+    
+    Args:
+        dataframes_by_topic: Словарь, где ключи — темы, значения — соответствующие DataFrame.
+    
+    Returns:
+        Словарь с ключами вида "Topic_pages_1-4" и значениями — DataFrame групп.
+    """
+    result = {}
+    for topic, df in dataframes_by_topic.items():
+        df_sorted = df.sort_values(by='page_num').reset_index(drop=True)
+        df_sorted['group'] = (df_sorted['page_num'].diff() > 1).cumsum()
+        for _, group_df in df_sorted.groupby('group'):
+            clean_df = group_df.drop(columns=['group']).reset_index(drop=True)
+            start = clean_df['page_num'].min()
+            end = clean_df['page_num'].max()
+            key = f"{topic}_pages_{start}-{end}"
+            result[key] = clean_df
+    return result
 
 
 def get_pages_mapping(df_pages: pd.DataFrame) -> list[int]:
@@ -112,7 +132,9 @@ def get_page_sorting(images_dir):
 
     # получаем предсказания от модели
     for idx, image_path in enumerate(images_paths):
-        page_num = int(model.predict_on_image(image=image_path, question=page_num_prompt))
+        page_num = int(
+            model.predict_on_image(image=image_path, question=page_num_prompt)
+        )
         page_topic = model.predict_on_image(
             image=image_path, question=page_topic_prompt
         )
