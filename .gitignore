@@ -36,6 +36,5 @@ model_cache
 # Игнорируем страницы pdf-документа
 images
 
-# Игнорируем временные pdf-файлы
-sorted_output.pdf
-uploaded.pdf
+# Игнорируем временные файлы
+tmp

@@ -1,65 +1,73 @@
 import hashlib
 import os
-import glob
 from pathlib import Path
 import streamlit as st
 from get_page_sorting import (create_topic_mapping, get_page_sorting, get_pages_mapping)
+from parse_pdf import convert_pdf_to_images
 from pdf_mapper import pdf_to_mappings
-from utils.files import get_images_paths
 
 tmp_dir = "tmp"
 
 def pdf_sorter_page():
     st.title("PDF-сортировка")
-    
-    # Создаём директорию tmp
-    os.makedirs(tmp_dir, exist_ok=True)
+    os.makedirs(tmp_dir, exist_ok=True)  # Создание tmp директории
 
-    pdf_file = st.file_uploader("Загрузите документ", type=["pdf"])
-
-    # Инициализация состояния
+    # Инициализация сессионных переменных
     if "prev_hash" not in st.session_state:
         st.session_state.prev_hash = None
+    if "full_output_path" not in st.session_state:
+        st.session_state.full_output_path = None
+    if "topic_files" not in st.session_state:
+        st.session_state.topic_files = {}
+    if "processing" not in st.session_state:
+        st.session_state.processing = False  # Флаг обработки
+
+    # Форма загрузки PDF (остается доступной даже во время обработки)
+    pdf_file = st.file_uploader("Загрузите документ", type=["pdf"])
 
     if pdf_file is not None:
         try:
-            # Вычисление MD5 хэша текущего файла
+            # Вычисление хэша файла
             pdf_file.seek(0)
             current_hash = hashlib.md5(pdf_file.read()).hexdigest()
             pdf_file.seek(0)
 
-            # Очистка временных файлов при новом файле
+            # Проверка на изменение файла
             if st.session_state.prev_hash != current_hash:
-                for f in glob.glob(f"{tmp_dir}/*"):
-                    os.remove(f)
+                # Установка флага обработки
+                st.session_state.processing = True
 
-                # Сохранение загруженного файла
+                # Очистка предыдущих файлов
+                for f in os.listdir(tmp_dir):
+                    os.remove(os.path.join(tmp_dir, f))
+
+                # Сохранение временного файла
                 temp_pdf_path = os.path.join(tmp_dir, "uploaded.pdf")
                 with open(temp_pdf_path, "wb") as f:
                     f.write(pdf_file.read())
 
-                # Проверка корректности файла
+                # Проверка размера файла
                 if os.path.getsize(temp_pdf_path) == 0:
-                    st.error("Файл пустой. Проверьте корректность загрузки.")
+                    st.error("Файл пустой.")
+                    st.session_state.processing = False
                     return
 
-                # Создание временной папки для изображений
+                # Создание папки для изображений
                 image_folder = Path("images")
                 image_folder.mkdir(parents=True, exist_ok=True)
 
                 # Индикатор обработки
                 processing_placeholder = st.empty()
-                processing_placeholder.info("Идет обработка PDF...")
+                processing_placeholder.info("Идет обработка...")
 
                 try:
                     # Конвертация PDF в изображения
-                    from parse_pdf import convert_pdf_to_images
                     convert_pdf_to_images(
                         pdf_path=Path(temp_pdf_path),
                         images_folder=image_folder
                     )
 
-                    # Получение отсортированных данных
+                    # Обработка страниц
                     df_pages = get_page_sorting(image_folder)
                     pages_mapping = get_pages_mapping(df_pages)
 
@@ -84,39 +92,49 @@ def pdf_sorter_page():
                         )
                         topic_files[topic] = topic_output
 
+                    # Сохранение результатов в сессию
+                    st.session_state.full_output_path = full_output_path
+                    st.session_state.topic_files = topic_files
                     st.session_state.prev_hash = current_hash
 
                 except Exception as e:
-                    st.error(f"Ошибка при обработке: {str(e)}")
+                    st.error(f"Ошибка: {str(e)}")
                 finally:
+                    st.session_state.processing = False  # Сброс флага
                     processing_placeholder.empty()
 
-                st.success("PDF обработан успешно!")
+                st.success("Готово!")
 
             else:
-                st.info("Файл не изменился. Используется предыдущий результат.")
+                st.info("Файл не изменился. Используются старые результаты.")
 
-            # Вывод ссылок
-            if os.path.exists(full_output_path):
-                st.markdown("### Скачать отсортированные PDF:")
+        except Exception as e:
+            st.error(f"Ошибка: {str(e)}")
+            st.session_state.processing = False  # Сброс флага при ошибке
+
+    # Вывод кнопок только если обработка завершена
+    if not st.session_state.processing:
+        # Кнопка для полного PDF
+        if st.session_state.full_output_path and os.path.exists(st.session_state.full_output_path):
+            with open(st.session_state.full_output_path, "rb") as f:
                 st.download_button(
-                    label="Полный PDF",
-                    data=open(full_output_path, "rb").read(),
+                    label="Скачать полный PDF",
+                    data=f.read(),
                     file_name="sorted_full.pdf",
                     mime="application/pdf"
                 )
 
-                st.markdown("### PDF по темам:")
-                for topic, path in topic_files.items():
-                    if os.path.exists(path):
+        # Кнопки по темам
+        if st.session_state.topic_files:
+            st.markdown("### PDF по темам:")
+            for topic, path in st.session_state.topic_files.items():
+                if os.path.exists(path):
+                    with open(path, "rb") as f:
                         st.download_button(
-                            label=f"Тема: {topic}",
-                            data=open(path, "rb").read(),
+                            label=f"Скачать {topic}",
+                            data=f.read(),
                             file_name=f"{topic}.pdf",
                             mime="application/pdf"
                         )
-
-        except Exception as e:
-            st.error(f"Произошла ошибка: {str(e)}")
     else:
-        st.warning("Пожалуйста, загрузите PDF-файл.")
+        st.info("Идет обработка... Пожалуйста, подождите.")

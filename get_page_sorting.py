@@ -112,7 +112,7 @@ def get_page_sorting(images_dir):
 
     # получаем предсказания от модели
     for idx, image_path in enumerate(images_paths):
-        page_num = model.predict_on_image(image=image_path, question=page_num_prompt)
+        page_num = int(model.predict_on_image(image=image_path, question=page_num_prompt))
         page_topic = model.predict_on_image(
             image=image_path, question=page_topic_prompt
         )
