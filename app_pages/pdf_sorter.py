@@ -4,9 +4,12 @@ from pathlib import Path
 
 import streamlit as st
 
-from get_page_sorting import get_page_sorting
+from get_page_sorting import (create_topic_mapping, get_page_sorting,
+                              get_pages_mapping)
 from parse_pdf import convert_pdf_to_images
 from pdf_mapper import pdf_to_mappings
+
+tmp_dir = "tmp"
 
 
 def pdf_sorter_page():
@@ -14,8 +17,8 @@ def pdf_sorter_page():
 
     # Форма для загрузки PDF
     pdf_file = st.file_uploader("Загрузите документ", type=["pdf"])
-    
-    output_file_path = "sorted_output.pdf"
+
+    output_file_path = os.path.join(tmp_dir, "sorted_output.pdf")
 
     # Инициализация состояния
     if "prev_hash" not in st.session_state:
@@ -35,7 +38,7 @@ def pdf_sorter_page():
                     os.remove(output_file_path)
 
                 # Сохраняем временный файл
-                temp_pdf_path = "uploaded.pdf"
+                temp_pdf_path = os.path.join(tmp_dir, "uploaded.pdf")
                 with open(temp_pdf_path, "wb") as f:
                     f.write(pdf_file.read())
 
@@ -59,14 +62,30 @@ def pdf_sorter_page():
                     )
 
                     # Получение порядка страниц
-                    pages_mapping = get_page_sorting(image_folder)
+                    df_pages = get_page_sorting(image_folder)
 
-                    # Создание отсортированного PDF
+                    pages_mapping = get_pages_mapping(dfs_by_topic[topic])
+
+                    # Создание целого отсортированного PDF
                     pdf_to_mappings(
                         pdf_in_path=temp_pdf_path,
                         mapping_list=pages_mapping,
                         output_file_path=output_file_path,
                     )
+
+                    # Создаем по одному отдельному pdf на каждую тему
+                    dfs_by_topic = create_topic_mapping(df_pages)
+
+                    for topic in dfs_by_topic:
+                        topic_pages_mapping = get_pages_mapping(dfs_by_topic[topic])
+
+                        # Создание PDF
+                        temp_pdf_path = os.path.join(tmp_dir, f"{topic}.pdf")
+                        pdf_to_mappings(
+                            pdf_in_path=temp_pdf_path,
+                            mapping_list=topic_pages_mapping,
+                            output_file_path=output_file_path,
+                        )
 
                     st.session_state.prev_hash = current_hash
                 except Exception as e:
