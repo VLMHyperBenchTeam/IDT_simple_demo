@@ -1,12 +1,15 @@
 import hashlib
 import os
 from pathlib import Path
+
+import pandas as pd
 import streamlit as st
+
 from get_page_sorting import (
     create_topic_mapping,
+    create_topic_range_mapping,
     get_page_sorting,
     get_pages_mapping,
-    create_topic_range_mapping,
 )
 from parse_pdf import convert_pdf_to_images
 from pdf_mapper import pdf_to_mappings
@@ -16,7 +19,7 @@ tmp_dir = "tmp"
 
 def pdf_sorter_page():
     st.title("PDF-сортировка")
-    os.makedirs(tmp_dir, exist_ok=True)  # Создание tmp директории
+    os.makedirs(tmp_dir, exist_ok=True)
 
     # Инициализация сессионных переменных
     if "prev_hash" not in st.session_state:
@@ -26,9 +29,27 @@ def pdf_sorter_page():
     if "topic_files" not in st.session_state:
         st.session_state.topic_files = {}
     if "processing" not in st.session_state:
-        st.session_state.processing = False  # Флаг обработки
+        st.session_state.processing = False
 
-    # Форма загрузки PDF (остается доступной даже во время обработки)
+    # Загрузка данных о заполнении форм (один раз при инициализации)
+    if "fill_status" not in st.session_state:
+        try:
+            fill_mapper_path = "topic_mapper/fill_mapper.csv"
+            df_fill_mapper = pd.read_csv(
+                fill_mapper_path, delimiter=";", dtype={"fill form": str}
+            )
+            fill_status = df_fill_mapper.set_index("document")["fill form"].to_dict()
+            st.session_state.fill_status = fill_status
+        except Exception as e:
+            st.error(f"Ошибка загрузки fill_mapper: {e}")
+            st.session_state.fill_status = {}
+
+    # Выбор фильтра
+    filter_option = st.selectbox(
+        "Фильтр по заполнению форм:", ["all", "filled", "without fill"]
+    )
+
+    # Форма загрузки PDF
     pdf_file = st.file_uploader("Загрузите документ", type=["pdf"])
 
     if pdf_file is not None:
@@ -40,7 +61,6 @@ def pdf_sorter_page():
 
             # Проверка на изменение файла
             if st.session_state.prev_hash != current_hash:
-                # Установка флага обработки
                 st.session_state.processing = True
 
                 # Очистка предыдущих файлов
@@ -58,7 +78,6 @@ def pdf_sorter_page():
                     st.session_state.processing = False
                     return
 
-                # Создание папки для изображений
                 image_folder = Path("images")
                 image_folder.mkdir(parents=True, exist_ok=True)
 
@@ -106,7 +125,7 @@ def pdf_sorter_page():
                 except Exception as e:
                     st.error(f"Ошибка: {str(e)}")
                 finally:
-                    st.session_state.processing = False  # Сброс флага
+                    st.session_state.processing = False
                     processing_placeholder.empty()
 
                 st.success("Готово!")
@@ -116,7 +135,7 @@ def pdf_sorter_page():
 
         except Exception as e:
             st.error(f"Ошибка: {str(e)}")
-            st.session_state.processing = False  # Сброс флага при ошибке
+            st.session_state.processing = False
 
     # Вывод кнопок только если обработка завершена
     if not st.session_state.processing:
@@ -132,17 +151,29 @@ def pdf_sorter_page():
                     mime="application/pdf",
                 )
 
-        # Кнопки по темам
+        # Кнопки для PDF по темам с фильтрацией
         if st.session_state.topic_files:
-            st.markdown("### PDF по темам:")
+            fill_status = st.session_state.get("fill_status", {})
+            filtered_topics = {}
             for topic, path in st.session_state.topic_files.items():
-                if os.path.exists(path):
-                    with open(path, "rb") as f:
-                        st.download_button(
-                            label=f"Скачать {topic}",
-                            data=f.read(),
-                            file_name=f"{topic}.pdf",
-                            mime="application/pdf",
-                        )
+                fill_value = fill_status.get(topic, "0")
+                if (
+                    filter_option == "all"
+                    or (filter_option == "filled" and fill_value == "1")
+                    or (filter_option == "without fill" and fill_value == "0")
+                ):
+                    filtered_topics[topic] = path
+
+            if filtered_topics:
+                st.markdown("### PDF по темам:")
+                for topic, path in filtered_topics.items():
+                    if os.path.exists(path):
+                        with open(path, "rb") as f:
+                            st.download_button(
+                                label=f"Скачать {topic}",
+                                data=f.read(),
+                                file_name=f"{topic}.pdf",
+                                mime="application/pdf",
+                            )
     else:
         st.info("Идет обработка... Пожалуйста, подождите.")
