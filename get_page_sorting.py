@@ -135,4 +135,7 @@ def get_page_sorting(images_dir):
         by=["page_topic", "page_num"], ascending=[True, True], inplace=True
     )
 
+    # Чтобы навания тем не содержали "/" он будет воприниматься как вложеная папка
+    df_pages["page_topic"] = df_pages["page_topic"].str.replace("/", "-", regex=False)
+
     return df_pages

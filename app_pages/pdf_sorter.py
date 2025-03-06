@@ -1,24 +1,21 @@
 import hashlib
 import os
+import glob
 from pathlib import Path
-
 import streamlit as st
-
-from get_page_sorting import (create_topic_mapping, get_page_sorting,
-                              get_pages_mapping)
-from parse_pdf import convert_pdf_to_images
+from get_page_sorting import (create_topic_mapping, get_page_sorting, get_pages_mapping)
 from pdf_mapper import pdf_to_mappings
+from utils.files import get_images_paths
 
 tmp_dir = "tmp"
 
-
 def pdf_sorter_page():
     st.title("PDF-сортировка")
+    
+    # Создаём директорию tmp
+    os.makedirs(tmp_dir, exist_ok=True)
 
-    # Форма для загрузки PDF
     pdf_file = st.file_uploader("Загрузите документ", type=["pdf"])
-
-    output_file_path = os.path.join(tmp_dir, "sorted_output.pdf")
 
     # Инициализация состояния
     if "prev_hash" not in st.session_state:
@@ -26,28 +23,27 @@ def pdf_sorter_page():
 
     if pdf_file is not None:
         try:
-            # Вычисляем MD5 хэш текущего файла
+            # Вычисление MD5 хэша текущего файла
             pdf_file.seek(0)
             current_hash = hashlib.md5(pdf_file.read()).hexdigest()
             pdf_file.seek(0)
 
-            # Проверяем изменение файла
+            # Очистка временных файлов при новом файле
             if st.session_state.prev_hash != current_hash:
-                # Удаляем предыдущий отсортированный PDF
-                if os.path.exists(output_file_path):
-                    os.remove(output_file_path)
+                for f in glob.glob(f"{tmp_dir}/*"):
+                    os.remove(f)
 
-                # Сохраняем временный файл
+                # Сохранение загруженного файла
                 temp_pdf_path = os.path.join(tmp_dir, "uploaded.pdf")
                 with open(temp_pdf_path, "wb") as f:
                     f.write(pdf_file.read())
 
-                # Проверяем размер файла
+                # Проверка корректности файла
                 if os.path.getsize(temp_pdf_path) == 0:
-                    st.error("Файл пустой. Проверьте корректность загрузки PDF.")
+                    st.error("Файл пустой. Проверьте корректность загрузки.")
                     return
 
-                # Создаем папку для изображений
+                # Создание временной папки для изображений
                 image_folder = Path("images")
                 image_folder.mkdir(parents=True, exist_ok=True)
 
@@ -57,39 +53,41 @@ def pdf_sorter_page():
 
                 try:
                     # Конвертация PDF в изображения
+                    from parse_pdf import convert_pdf_to_images
                     convert_pdf_to_images(
-                        pdf_path=Path(temp_pdf_path), images_folder=image_folder
+                        pdf_path=Path(temp_pdf_path),
+                        images_folder=image_folder
                     )
 
-                    # Получение порядка страниц
+                    # Получение отсортированных данных
                     df_pages = get_page_sorting(image_folder)
+                    pages_mapping = get_pages_mapping(df_pages)
 
-                    pages_mapping = get_pages_mapping(dfs_by_topic[topic])
-
-                    # Создание целого отсортированного PDF
+                    # Создание полного PDF
+                    full_output_path = os.path.join(tmp_dir, "sorted_full.pdf")
                     pdf_to_mappings(
                         pdf_in_path=temp_pdf_path,
                         mapping_list=pages_mapping,
-                        output_file_path=output_file_path,
+                        output_file_path=full_output_path
                     )
 
-                    # Создаем по одному отдельному pdf на каждую тему
+                    # Создание PDF по темам
                     dfs_by_topic = create_topic_mapping(df_pages)
-
+                    topic_files = {}
                     for topic in dfs_by_topic:
-                        topic_pages_mapping = get_pages_mapping(dfs_by_topic[topic])
-
-                        # Создание PDF
-                        temp_pdf_path = os.path.join(tmp_dir, f"{topic}.pdf")
+                        topic_pages = get_pages_mapping(dfs_by_topic[topic])
+                        topic_output = os.path.join(tmp_dir, f"{topic}.pdf")
                         pdf_to_mappings(
                             pdf_in_path=temp_pdf_path,
-                            mapping_list=topic_pages_mapping,
-                            output_file_path=output_file_path,
+                            mapping_list=topic_pages,
+                            output_file_path=topic_output
                         )
+                        topic_files[topic] = topic_output
 
                     st.session_state.prev_hash = current_hash
+
                 except Exception as e:
-                    st.error(f"Ошибка при обработке PDF: {str(e)}")
+                    st.error(f"Ошибка при обработке: {str(e)}")
                 finally:
                     processing_placeholder.empty()
 
@@ -98,16 +96,25 @@ def pdf_sorter_page():
             else:
                 st.info("Файл не изменился. Используется предыдущий результат.")
 
-            # Показываем кнопку для скачивания
-            if Path(output_file_path).exists():
-                with open(output_file_path, "rb") as file:
-                    pdf_bytes = file.read()
+            # Вывод ссылок
+            if os.path.exists(full_output_path):
+                st.markdown("### Скачать отсортированные PDF:")
                 st.download_button(
-                    label="Скачать отсортированный PDF",
-                    data=pdf_bytes,
-                    file_name="sorted_output.pdf",
-                    mime="application/pdf",
+                    label="Полный PDF",
+                    data=open(full_output_path, "rb").read(),
+                    file_name="sorted_full.pdf",
+                    mime="application/pdf"
                 )
+
+                st.markdown("### PDF по темам:")
+                for topic, path in topic_files.items():
+                    if os.path.exists(path):
+                        st.download_button(
+                            label=f"Тема: {topic}",
+                            data=open(path, "rb").read(),
+                            file_name=f"{topic}.pdf",
+                            mime="application/pdf"
+                        )
 
         except Exception as e:
             st.error(f"Произошла ошибка: {str(e)}")
