@@ -2,6 +2,18 @@
 
 # Презентация возможностей по работе с документам с помощью VLM
 
+# Отключение авторизации
+В сервисе включена авторизация.
+
+Чтобы убрать авторизацию на время теста, замените значения `actual_email` [4](https://github.com/VLMHyperBenchTeam/IDT_simple_demo/blob/main/utils/auth.py#L4) и `actual_password` [5](https://github.com/VLMHyperBenchTeam/IDT_simple_demo/blob/main/utils/auth.py#L5) на на пустые строки.
+
+```
+actual_email = "" # user@example.com
+actual_password = "" # securepassword
+```
+
+При запуске сервиса, оставьте поля для ввода данных пользователя пустыми и просто нажмите на кнопку "Войти".
+
 # Docker контейнер модели
 
 Поддерживаются модели семейства Qwen2.5-VL:
@@ -37,7 +49,7 @@ streamlit run main.py --server.port=8501 --server.address=0.0.0.0
 
 Переходим по адресу ГПУ сервера `<ip-адрес-сервера>:8501/`
 
-# Инструкция от Анастасии
+# Создание и запуск сервиса в виртуальном окружении poetry
 
 Запуск:
 1. Активируйте poetry shell
@@ -49,4 +61,3 @@ poetry install --no-root
 ```
 streamlit run main.py
 ```
-4. Чтобы убрать регистрацию на время теста, удалите значения на строках [69](https://github.com/VLMHyperBenchTeam/IDT_simple_demo/blob/dev/main.py#L69) и [70](https://github.com/VLMHyperBenchTeam/IDT_simple_demo/blob/dev/main.py#L70)
